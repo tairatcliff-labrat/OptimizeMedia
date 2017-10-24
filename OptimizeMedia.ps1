@@ -30,6 +30,8 @@ ForEach($File in $Files){
     Write-Host "###################################### Processing New Video ######################################"
     $NumFilesCounter ++
     $InputFileName = $File.FullName
+    $InputFileBaseName = $File.BaseName
+    $InputFileDirectory = $File.DirectoryName
     $OutputFileName = [io.path]::ChangeExtension($File.FullName, "optimized.480p.mp4")
     $FileAge = $Date - $File.CreationTime
     Write-Host "$($File.Basename) is $($FileAge.days) days old"-ForegroundColor Yellow
@@ -44,7 +46,8 @@ ForEach($File in $Files){
         Write-Host
         #$Props = $null
         $Props = @{}
-        $Props.Add("Name", $File.BaseName.ToString())
+        $Props.Add("File Name", $InputFileBaseName)
+        $Props.Add("File Directory", $InputFileDirectory)
         $Props.Add("Age (Days)", $FileAge.days)
         $Props.Add("Original Size (MB)", $InputFileSize)
 
@@ -62,8 +65,8 @@ ForEach($File in $Files){
     If (Test-Path $OutputFileName){
         $OutputFileDuration = &ffprobe.exe $EscapeParser " -v error -show_format -select_streams v `"$OutputFileName`"" | Select-String "duration="
         $OutputFileDurationTime = New-TimeSpan -Seconds ($OutputFileDuration.ToString()).Split('=')[1].Split('.')[0] 
-        $OutputFileSize = [math]::Round(((Get-Item $OutputFileName).Length / 1MB).ToString(),2)
-        $OptimizedTotalSize +=  ($OutputFileName.Length).ToString()
+        #$OutputFileSize = [math]::Round(((Get-Item $OutputFileName).Length / 1MB).ToString(),2)
+        $OptimizedTotalSize +=  ((Get-Item $OutputFileName).Length).ToString()
 
         Write-Host "Input File size is (MB):" $InputFileSize -ForegroundColor Yellow
         Write-Host "Output File size is (MB):" $OutputFileSize -ForegroundColor Yellow
@@ -118,13 +121,15 @@ ForEach($File in $Files){
 }
 Write-Host
 Write-Host "The following vidoes have been processed" -BackgroundColor Green -ForegroundColor Black
-$VideosProcessed | Select "Name", "Age (Days)", "Original Size (MB)", "Optimized Size (MB)"
+$VideosProcessed | Select "File Name", "File Directory", "Age (Days)", "Original Size (MB)", "Optimized Size (MB)"
 
 If($OutputToCsv){$VideosProcessed | Export-Csv -Path $OutputToCsv -NoTypeInformation}
 
 
 Write-Host
 Write-Host "After Processing the directory:" $Directory -ForegroundColor Cyan
+Write-Host "Processed $NumFilesCounter of $NumFiles videos" -ForegroundColor Cyan
 Write-Host "The original total size was:" ([math]::Round(($OriginalTotalSize / 1GB),2)) "GB" -ForegroundColor Cyan
 Write-Host "The optimized total size is:" ([math]::Round(($OptimizedTotalSize / 1GB),2)) "GB" -ForegroundColor Cyan
+Write-Host
 Write-Host "Successfully reduced the total size by" ([math]::Round((($OriginalTotalSize - $OptimizedTotalSize) / 1GB),2)) "GB" -ForegroundColor Cyan
