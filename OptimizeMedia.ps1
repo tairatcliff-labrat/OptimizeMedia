@@ -1,7 +1,7 @@
 ﻿param(
     [string]$Directory = "C:\Temp", # The directory to recursively scan for media.
     [string]$OptimizeAfterDays = -30, # How old a file must be before it is optimized.
-    [string]$OutputToCsv = "C:\Temp", # Output the "Processed Videos" report to a csv file. Specify the directory to save the CSV.  
+    [string]$OutputToCsv, # Output the "Processed Videos" report to a csv file. Specify the CSV file to save to i.e. "C:\Temp\Videos.csv". If left blank a CSV won't be generated.  
     [switch]$ValidateOnly = $False, # Will simulate the script running but will not actually optimize or delete any files. The "Processed Videos" output will still be generated.
     [switch]$DeleteOriginalVideo = $True # Without this parameter in the command the original file will be optimized and the not deleted.
     )
@@ -22,7 +22,7 @@ $OriginalTotalSize = 0
 $OptimizedTotalSize = 0
 $ProcessedOutputFileSize = 0
 ForEach($File in $Files){
-    $OriginalTotalSize += ($File.Length / 1GB).ToString()
+    $OriginalTotalSize += ($File.Length).ToString()
 }
 
 
@@ -42,13 +42,13 @@ ForEach($File in $Files){
         Write-Host
         Write-Host "Input video duration is (hh:mm:ss):" $InputFileDurationTime.ToString("hh\:mm\:ss") -ForegroundColor Yellow
         Write-Host
-        $Props = $null
+        #$Props = $null
         $Props = @{}
         $Props.Add("Name", $File.BaseName.ToString())
         $Props.Add("Age (Days)", $FileAge.days)
         $Props.Add("Original Size (MB)", $InputFileSize)
-        
-        $ProcessedSize += (($File.Length / 1GB).ToString())
+
+        $ProcessedSize += ($File.Length.ToString())
 
         $VideoProcessTimer = [Diagnostics.stopwatch]::StartNew()
         If(!($ValidateOnly)){
@@ -63,7 +63,8 @@ ForEach($File in $Files){
         $OutputFileDuration = &ffprobe.exe $EscapeParser " -v error -show_format -select_streams v `"$OutputFileName`"" | Select-String "duration="
         $OutputFileDurationTime = New-TimeSpan -Seconds ($OutputFileDuration.ToString()).Split('=')[1].Split('.')[0] 
         $OutputFileSize = [math]::Round(((Get-Item $OutputFileName).Length / 1MB).ToString(),2)
-        
+        $OptimizedTotalSize +=  ($OutputFileName.Length).ToString()
+
         Write-Host "Input File size is (MB):" $InputFileSize -ForegroundColor Yellow
         Write-Host "Output File size is (MB):" $OutputFileSize -ForegroundColor Yellow
         Write-Host
@@ -111,22 +112,19 @@ ForEach($File in $Files){
     Write-Host "The script has been running for a total time of (hh:mm:ss):" $ScriptRunningTime.Elapsed.ToString("hh\:mm\:ss") -ForegroundColor Yellow
     Write-Host
     Write-Host "Processed $NumFilesCounter of $NumFiles videos" -ForegroundColor Cyan
-    Write-Host "Proccessed" ([math]::Round($ProcessedSize,2)) "GB of the total " ([math]::Round($OriginalTotalSize,2)) "GB" -ForegroundColor Cyan
+    Write-Host "Proccessed" ([math]::Round(($ProcessedSize / 1GB),2)) "GB of the total " ([math]::Round(($OriginalTotalSize / 1GB),2)) "GB" -ForegroundColor Cyan
     Write-Host
 
 }
 Write-Host
 Write-Host "The following vidoes have been processed" -BackgroundColor Green -ForegroundColor Black
 $VideosProcessed | Select "Name", "Age (Days)", "Original Size (MB)", "Optimized Size (MB)"
+
 If($OutputToCsv){$VideosProcessed | Export-Csv -Path $OutputToCsv -NoTypeInformation}
 
-$ProcessedFiles = Get-ChildItem -Recurse $Directory -Include $VideoExtensions | Where {($_.Attributes -ne "Directory")}
-ForEach($File in $ProcessedFiles){
-    $OptimizedTotalSize += ($File.Length / 1GB).ToString()
-}
 
 Write-Host
 Write-Host "After Processing the directory:" $Directory -ForegroundColor Cyan
-Write-Host "The original total size was:" ([math]::Round($OriginalTotalSize,2)) "GB" -ForegroundColor Cyan
-Write-Host "The optimized total size is:" ([math]::Round($OptimizedTotalSize,2)) "GB" -ForegroundColor Cyan
-Write-Host "Successfully reduced the total size by" ([math]::Round(($OriginalTotalSize - $OptimizedTotalSize),2)) "GB" -ForegroundColor Cyan
+Write-Host "The original total size was:" ([math]::Round(($OriginalTotalSize / 1GB),2)) "GB" -ForegroundColor Cyan
+Write-Host "The optimized total size is:" ([math]::Round(($OptimizedTotalSize / 1GB),2)) "GB" -ForegroundColor Cyan
+Write-Host "Successfully reduced the total size by" ([math]::Round((($OriginalTotalSize - $OptimizedTotalSize) / 1GB),2)) "GB" -ForegroundColor Cyan
