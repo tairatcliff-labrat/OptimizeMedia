@@ -55,7 +55,7 @@ ForEach($File in $Files){
 
         $VideoProcessTimer = [Diagnostics.stopwatch]::StartNew()
         If(!($ValidateOnly)){
-            $OptimizeVideo = &ffmpeg.exe $EscapeParser " -y -i `"$InputFileName`" -s hd480 -c:v libx264 -crf 23 -c:a aac -strict -2 `"$OutputFileName`""
+            $OptimizeVideo = &ffmpeg.exe $EscapeParser " -y -i `"$InputFileName`" -s hd480 -c:v libx264 -crf 21 -c:a aac -strict -2 `"$OutputFileName`""
         }
     } Else {
         Write-Host "Optimzing any videos that are older than $OptimizeAfterDays days, The video is not old enough to be optimized" -ForegroundColor Yellow
